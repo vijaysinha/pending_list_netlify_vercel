@@ -13,7 +13,7 @@ const quantityColumns = [
 function Quantity({ value }) {
   return (
     <span className={value > 0 ? "quantity-pending" : ""}>
-      {value ?? 0}
+      {value ?? "—"}
     </span>
   );
 }
@@ -61,8 +61,13 @@ function Frame() {
     const quantity = Number(item[key]) || 0;
     if (key !== "fRice" && key !== "cgRice") return quantity;
 
+    const hasRiceBalance =
+      Number(item.fRice) > 0 || Number(item.cgRice) > 0;
+    const portData = portDataByRc[String(item.rc_id)];
+    if (hasRiceBalance && !portData) return null;
+
     const portQuantity =
-      Number(portDataByRc[String(item.rc_id)]?.riceQuantities?.[key]) || 0;
+      Number(portData?.riceQuantities?.[key]) || 0;
     return quantity - portQuantity;
   }
 

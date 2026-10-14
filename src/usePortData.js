@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 
 const portDataCache = new Map();
+const PORT_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function getPortData(rc_id) {
   const key = String(rc_id);
-  const cachedRequest = portDataCache.get(key);
-  if (cachedRequest) return cachedRequest;
+  const cachedEntry = portDataCache.get(key);
+  if (
+    cachedEntry &&
+    (cachedEntry.expiresAt === null || cachedEntry.expiresAt > Date.now())
+  ) {
+    return cachedEntry.request;
+  }
+  if (cachedEntry) portDataCache.delete(key);
 
   const request = (async () => {
     const res = await fetch("/.netlify/functions/getPortData", {
@@ -64,12 +71,20 @@ function getPortData(rc_id) {
     };
   })();
 
-  portDataCache.set(key, request);
-  request.catch(() => {
-    if (portDataCache.get(key) === request) {
-      portDataCache.delete(key);
-    }
-  });
+  const cacheEntry = { request, expiresAt: null };
+  portDataCache.set(key, cacheEntry);
+  request.then(
+    () => {
+      if (portDataCache.get(key) === cacheEntry) {
+        cacheEntry.expiresAt = Date.now() + PORT_DATA_CACHE_TTL_MS;
+      }
+    },
+    () => {
+      if (portDataCache.get(key) === cacheEntry) {
+        portDataCache.delete(key);
+      }
+    },
+  );
 
   return request;
 }
