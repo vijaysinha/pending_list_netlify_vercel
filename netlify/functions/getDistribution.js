@@ -1,3 +1,5 @@
+import { formatLocalDate } from "../../shared/eposPeriod.js";
+
 export async function handler(event) {
   const { shop_id } = JSON.parse(event.body || "{}");
 
@@ -8,8 +10,7 @@ export async function handler(event) {
       body: JSON.stringify({ error: "shop_id is required" }),
     };
   }
-
-  const formatted = "2026-05-07";
+  const formatted = formatLocalDate();
 
   try {
     const res = await fetch(
@@ -31,7 +32,9 @@ export async function handler(event) {
       return {
         statusCode: res.status,
         headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ error: `Remote API error: ${res.status} ${text}` }),
+        body: JSON.stringify({
+          error: `Remote API error: ${res.status} ${text}`,
+        }),
       };
     }
 

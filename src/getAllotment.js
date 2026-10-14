@@ -1,51 +1,61 @@
-export async function getAllotment(shopid = 411001005) {
-  const cardwiseAllotment = [];
+import { getEposPeriod } from "../shared/eposPeriod.js";
+
+function toQuantity(value) {
+  const quantity = Number(value);
+  return Number.isFinite(quantity) ? quantity : 0;
+}
+
+function sumQuantities(card, ...keys) {
+  return keys.reduce((total, key) => total + toQuantity(card[key]), 0);
+}
+
+export async function getAllotment(shop_id) {
   const res = await fetch("/.netlify/functions/getAllotment", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ shop_id: shopid }),
+    body: JSON.stringify({ shop_id }),
   });
-  try {
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Function request failed: ${res.status} ${text}`);
-    }
 
-    const data = await res.json();
-
-    if (!data || !data.data) throw new Error("Network Problem!");
-    formattedAllotment(data);
-  } catch (err) {
-    console.log(err.message);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Function request failed: ${res.status} ${text}`);
   }
-  function formattedAllotment(data) {
-    const totalCards = data.data.length;
-    for (let i = 0; i < totalCards; i++) {
-      const rc_allotment = {
-        rc_id: data.data[i].rc_id,
-        rice:
-          (data.data[i]["Rice-4"] || 0) +
-          (data.data[i]["CGRice-4"] || 0) +
-          (data.data[i]["Rice-5"] || 0) +
-          (data.data[i]["CGRice-5"] || 0) +
-          (data.data[i]["Rice-6"] || 0) +
-          (data.data[i]["CGRice-6"] || 0),
-        sugar:
-          (data.data[i]["Sugar-4"] || 0) +
-          (data.data[i]["Sugar-5"] || 0) +
-          (data.data[i]["Sugar-6"] || 0),
-        salt:
-          (data.data[i]["Salt-4"] || 0) +
-          (data.data[i]["Salt-5"] || 0) +
-          (data.data[i]["Salt-6"] || 0),
-        gram:
-          (data.data[i]["Gram-4"] || 0) +
-          (data.data[i]["Gram-5"] || 0) +
-          (data.data[i]["Gram-6"] || 0),
-      };
 
-      cardwiseAllotment.push(rc_allotment);
-    }
+  const response = await res.json();
+  if (!Array.isArray(response?.data)) {
+    throw new Error("Allotment response does not contain a data array");
   }
-  return cardwiseAllotment;
+
+  const { previousMonth, currentMonth } = getEposPeriod();
+  return response.data.map((card) => ({
+    rc_id: card.rc_id,
+    familyHead: card.family_head ?? card["Family Head"] ?? "NA",
+    scheme: card.scheme_name_en ?? card.scheme ?? card.Scheme ?? "",
+    units: card.units ?? card.Units ?? 0,
+    fRice: sumQuantities(
+      card,
+      `F Rice-${previousMonth}`,
+      `F Rice-${currentMonth}`,
+    ),
+    cgRice: sumQuantities(
+      card,
+      `CGRice-${previousMonth}`,
+      `CGRice-${currentMonth}`,
+    ),
+    sugar: sumQuantities(
+      card,
+      `Sugar-${previousMonth}`,
+      `Sugar-${currentMonth}`,
+    ),
+    salt: sumQuantities(
+      card,
+      `Salt-${previousMonth}`,
+      `Salt-${currentMonth}`,
+    ),
+    gram:
+      toQuantity(
+        card[`Koil-${previousMonth}`] ?? card[`Gram-${previousMonth}`],
+      ) +
+      toQuantity(card[`Koil-${currentMonth}`] ?? card[`Gram-${currentMonth}`]),
+  }));
 }

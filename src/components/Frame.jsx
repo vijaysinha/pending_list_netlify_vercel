@@ -1,191 +1,200 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import getFinalData from "../getFinalData";
-import getPortData from "../usePortData";
 import PortComponent from "./PortComponent";
+
+const quantityColumns = [
+  { key: "fRice", label: "F Rice" },
+  { key: "cgRice", label: "CGRice" },
+  { key: "sugar", label: "Sugar" },
+  { key: "salt", label: "Salt" },
+  { key: "gram", label: "Koil / चना" },
+];
+
+function Quantity({ value }) {
+  return (
+    <span className={value > 0 ? "quantity-pending" : ""}>
+      {value ?? 0}
+    </span>
+  );
+}
+
 function Frame() {
   const [shopId, setShopId] = useState("");
-  const [submittedShopId, setSubmittedShopId] = useState(null);
+  const [searchRequest, setSearchRequest] = useState(null);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const [portRiceByRc, setPortRiceByRc] = useState({});
   const [loading, setLoading] = useState(false);
-  const [port_id, setPortId] = useState(null);
+
+  const handleRiceQuantities = useCallback((rc_id, quantities) => {
+    setPortRiceByRc((current) => ({
+      ...current,
+      [String(rc_id)]: quantities,
+    }));
+  }, []);
 
   useEffect(() => {
-    if (!submittedShopId) {
-      return;
-    }
+    if (!searchRequest) return;
+    let isCurrentRequest = true;
 
     const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-
       try {
-        const result = await getFinalData(submittedShopId);
-        
-        setData(result);
+        const result = await getFinalData(searchRequest.shopId);
+        if (isCurrentRequest) setData(result);
       } catch (err) {
         console.error(err);
-        setError(err.message || "Failed to load data");
+        if (isCurrentRequest) {
+          setError(err.message || "Failed to load data");
+        }
       } finally {
-        setLoading(false);
+        if (isCurrentRequest) setLoading(false);
       }
     };
-    fetchData();
-  }, [submittedShopId]);
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    setSubmittedShopId(shopId);
+    fetchData();
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [searchRequest]);
+
+  function getDisplayedQuantity(item, key) {
+    const quantity = Number(item[key]) || 0;
+    if (key !== "fRice" && key !== "cgRice") return quantity;
+
+    const portQuantity = Number(portRiceByRc[String(item.rc_id)]?.[key]) || 0;
+    return quantity - portQuantity;
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    const trimmedShopId = shopId.trim();
+    if (trimmedShopId) {
+      setData(null);
+      setPortRiceByRc({});
+      setError(null);
+      setLoading(true);
+      setSearchRequest({ shopId: trimmedShopId });
+    }
   }
 
   return (
-    <>
-      <section className="top w-[90%] h-auto bg-zinc-800 rounded-lg mx-auto mt-3 p-2">
-        <h1 className="text-center mt-3 p-2 ">
-          छूटे हुए हितग्राही जिनका उठाव शेष है अथवा मूल दुकान से उठाव नही हुआ है
+    <main className="app-shell">
+      <section className="search-panel">
+        <h1>
+          छूटे हुए हितग्राही जिनका उठाव शेष है अथवा मूल दुकान से उठाव नहीं हुआ है
         </h1>
-        <div className="shop-details w-full h-auto flex flex-row justify-center items-center gap-3 mt-5 p-2">
+        <form className="shop-search" onSubmit={handleSubmit}>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]+"
             required
-            placeholder="दुकान क्रमांक दर्ज करे..."
-            className=" border border-zinc-600 outline-none p-2"
+            placeholder="दुकान क्रमांक दर्ज करें..."
+            aria-label="दुकान क्रमांक"
             value={shopId}
-            onChange={(e) => setShopId(e.target.value)}
+            onChange={(event) => setShopId(event.target.value)}
           />
-          <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={handleSubmit}
-          >
-            Submit
-          </button>
-        </div>
+          <button type="submit">खोजें</button>
+        </form>
       </section>
 
-      <section className="frame w-[90%] h-auto bg-zinc-800 rounded-lg mx-auto mt-5 p-4">
-        {loading && (
-          <p className="text-center font-bold text-2xl">Loading...</p>
-        )}
-        {error && <p className="text-red-400">{error}</p>}
+      <section className="results-panel">
+        {loading && <p className="message">डेटा लोड हो रहा है...</p>}
+        {error && <p className="message error-message">{error}</p>}
         {data && (
-          <pre className="whitespace-pre-wrap">
-            {/* data Table Starts from here */}
-            <div className="relative overflow-x-auto bg-neutral-primary-soft shadow-xs rounded-base border border-default">
-              <table className="hidden md:table w-full text-sm text-center rtl:text-right text-body">
-                <thead className="bg-neutral-secondary-soft border-b rounded-base border-default">
-                  <tr>
-                    <th className="px-2 py-1 md:px-6 md:py-3 font-medium">
-                      राशनकार्ड क्र.
-                    </th>
-                    <th className="px-2 py-1 md:px-6 md:py-3 font-medium">
-                      चावल
-                    </th>
-                    <th className="px-2 py-1 md:px-6 md:py-3 font-medium">
-                      शक्कर
-                    </th>
-                    <th className="px-2 py-1 md:px-6 md:py-3 font-medium">
-                      नमक
-                    </th>
-                    <th className="px-2 py-1 md:px-6 md:py-3 font-medium">
-                      चना
-                    </th>
-                    <th className="px-2 py-1 md:px-6 md:py-3 font-medium">
-                      उठाव की स्थिति
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((item) => {
-                    
-                    return (
-                    <tr
-                      key={item.rc_id}
-                      className="bg-neutral-primary border-b border-default"
-                    >
-                      <td className="px-2 py-1 md:px-6 md:py-3">
-                        {item.rc_id}
-                      </td>
-                      <td
-                        className={`px-2 py-1 md:px-6 md:py-3 ${item.rice > 0 ? "bg-red-400 text-zinc-300" : ""}`}
-                      >
-                        {item.rice}
-                      </td>
-                      <td className={`px-2 py-1 md:px-6 md:py-3 ${item.sugar > 0 ? "bg-red-400 text-zinc-300" : ""}`}>
-                        {item.sugar}
-                      </td>
-                      <td className={`px-2 py-1 md:px-6 md:py-3 ${item.salt > 0 ? "bg-red-400 text-zinc-300" : ""}`}>{item.salt}</td>
-                      <td className={`px-2 py-1 md:px-6 md:py-3 ${item.gram > 0 ? "bg-red-400 text-zinc-300" : ""}`}>{item.gram}</td>
-                      <td className={`px-2 py-1 md:px-6 md:py-3 `}>
-                        <PortComponent rc_id={item.rc_id} /> 
-                      </td>
-                    </tr>
-                  )
-                }
-                  )}
-                </tbody>
-              </table>
-              
-              {/* Mobile Card Layout */}
-              <div className="md:hidden space-y-4">
-                {data.map((item) => (
-                  <div
-                    key={item.rc_id}
-                    className="bg-neutral-primary-soft border border-default rounded-lg p-3 shadow-sm"
-                  >
-                    <p className="font-bold mb-2">
-                      राशनकार्ड क्र.: {item.rc_id}
-                    </p>
-                    <p>
-                      चावल:{" "}
-                      <span
-                        className={
-                          item.rice > 0
-                            ? "bg-red-400 text-zinc-300 px-2 rounded"
-                            : ""
-                        }
-                      >
-                        {item.rice}
-                      </span>
-                    </p>
-                    <p>शक्कर: <span
-                        className={
-                          item.sugar > 0
-                            ? "bg-red-400 text-zinc-300 px-2 rounded"
-                            : ""
-                        }
-                      >
-                        {item.sugar}
-                      </span></p>
-                    <p>नमक: <span
-                        className={
-                          item.salt > 0
-                            ? "bg-red-400 text-zinc-300 px-2 rounded"
-                            : ""
-                        }
-                      >
-                        {item.salt}
-                      </span></p>
-                    <p>चना: <span
-                        className={
-                          item.gram > 0
-                            ? "bg-red-400 text-zinc-300 px-2 rounded"
-                            : ""
-                        }
-                      >
-                        {item.gram}
-                      </span></p>
-                    <p className="my-2"><PortComponent rc_id={item.rc_id} /></p>
-                  </div>
-                ))}
-              </div>
+          <>
+            <div className="register-heading">
+              <h2>RC-wise Pending Distribution</h2>
+              <p>
+                शेष मात्रा = आवंटन − उठाव − पोर्ट आवंटन
+                {searchRequest?.shopId
+                  ? ` · दुकान क्रमांक ${searchRequest.shopId}`
+                  : ""}
+              </p>
             </div>
-          </pre>
+
+            {data.length === 0 ? (
+              <p className="message">इस दुकान के लिए कोई रिकॉर्ड नहीं मिला।</p>
+            ) : (
+              <div className="table-scroll">
+                <table className="allotment-table">
+                  <thead>
+                    <tr>
+                      <th rowSpan={2}>क्र.</th>
+                      <th rowSpan={2}>RC Id</th>
+                      <th rowSpan={2}>Family Head</th>
+                      <th rowSpan={2}>Scheme</th>
+                      <th rowSpan={2}>Units</th>
+                      <th colSpan={quantityColumns.length}>
+                        शेष मात्रा (आवंटन − उठाव − पोर्ट आवंटन)
+                      </th>
+                      <th rowSpan={2}>उठाव की स्थिति</th>
+                    </tr>
+                    <tr>
+                      {quantityColumns.map(({ key, label }) => (
+                        <th key={key}>{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.map((item, index) => (
+                      <tr key={item.rc_id}>
+                        <td>{index + 1}</td>
+                        <td className="rc-number">{item.rc_id}</td>
+                        <td>{item.familyHead || "NA"}</td>
+                        <td>{item.scheme || "—"}</td>
+                        <td>{item.units ?? 0}</td>
+                        {quantityColumns.map(({ key }) => (
+                          <td key={key}>
+                            <Quantity value={getDisplayedQuantity(item, key)} />
+                          </td>
+                        ))}
+                        <td className="status-cell">
+                          {(Number(item.fRice) > 0 ||
+                            Number(item.cgRice) > 0) && (
+                            <PortComponent
+                              rc_id={item.rc_id}
+                              onRiceQuantities={handleRiceQuantities}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="mobile-records">
+              {data.map((item, index) => (
+                <article className="mobile-record" key={item.rc_id}>
+                  <h3>
+                    {index + 1}. RC Id: <span>{item.rc_id}</span>
+                  </h3>
+                  <p>Family Head: {item.familyHead || "NA"}</p>
+                  <p>Scheme: {item.scheme || "—"} · Units: {item.units ?? 0}</p>
+                  <div className="mobile-quantities">
+                    {quantityColumns.map(({ key, label }) => (
+                      <p key={key}>
+                        {label}:{" "}
+                        <Quantity value={getDisplayedQuantity(item, key)} />
+                      </p>
+                    ))}
+                  </div>
+                  {(Number(item.fRice) > 0 || Number(item.cgRice) > 0) && (
+                    <PortComponent
+                      rc_id={item.rc_id}
+                      onRiceQuantities={handleRiceQuantities}
+                    />
+                  )}
+                </article>
+              ))}
+            </div>
+          </>
         )}
-        <footer className="w-full h-1/3 bg-transparent text-zinc-500">
-                <p>@Raigarh</p>
-        </footer>
+        <footer className="app-footer">@Raigarh</footer>
       </section>
-    </>
+    </main>
   );
 }
 

@@ -1,6 +1,5 @@
 import { getAllotment } from "./getAllotment.js";
 import { getDistribution } from "./getDistribution.js";
-import getPortData from "./usePortData.js";
 
 export default async function getFinalData(shop_id) {
   const distributionData = await getDistribution(shop_id);
@@ -11,19 +10,20 @@ export default async function getFinalData(shop_id) {
 
 function findAllotment(distributionData, allotmentData) {
   const searchableRC = Object.fromEntries(
-    distributionData.map((obj) => [obj.rc_id, obj]),
+    distributionData.map((obj) => [String(obj.rc_id), obj]),
   );
+  const commodityKeys = ["fRice", "cgRice", "sugar", "salt", "gram"];
 
   return allotmentData.map((a) => {
-    const b = searchableRC[a.rc_id];
-    const result = { rc_id: a.rc_id };
-
-    for (const key of Object.keys(a)) {
-      if (key !== "rc_id") {
-        result[key] = (a[key] || 0) - ((b && b[key]) || 0);
-      }
-    }
-
-    return result;
+    const distributed = searchableRC[String(a.rc_id)];
+    return {
+      ...a,
+      ...Object.fromEntries(
+        commodityKeys.map((key) => [
+          key,
+          (Number(a[key]) || 0) - (Number(distributed?.[key]) || 0),
+        ]),
+      ),
+    };
   });
 }

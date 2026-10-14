@@ -1,11 +1,304 @@
-@import "tailwindcss";
-
-:root{
-    --bg-color:#000814;
-    --text-color: #ffffff
+:root {
+  color: #e5e7eb;
+  background: #101113;
+  color-scheme: dark;
+  font-family: Arial, "Noto Sans Devanagari", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
 
-body{
-    background-color: var(--bg-color);
-    color:var(--text-color)
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 50% -20%, rgb(47 52 62 / 42%), transparent 55%),
+    #101113;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(96%, 1600px);
+  margin: 28px auto;
+}
+
+.search-panel,
+.results-panel {
+  overflow: hidden;
+  margin-bottom: 18px;
+  border: 1px solid #2c2e33;
+  border-radius: 12px;
+  background: #17181b;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 22%);
+}
+
+.search-panel {
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.search-panel h1 {
+  margin: 0;
+  color: #f3f4f6;
+  font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.shop-search {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.shop-search input {
+  width: min(100%, 320px);
+  border: 1px solid #393b42;
+  border-radius: 7px;
+  padding: 10px 13px;
+  outline: none;
+  background: #111214;
+  color: #f3f4f6;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.shop-search input::placeholder {
+  color: #777b84;
+}
+
+.shop-search input:focus {
+  border-color: #8b83ff;
+  box-shadow: 0 0 0 3px rgb(139 131 255 / 18%);
+}
+
+.shop-search button {
+  border: 1px solid #8b83ff;
+  border-radius: 7px;
+  padding: 9px 22px;
+  background: #7569e8;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.shop-search button:hover {
+  background: #867bf5;
+}
+
+.shop-search button:active {
+  transform: translateY(1px);
+}
+
+.shop-search button:focus-visible {
+  outline: 2px solid #b8b2ff;
+  outline-offset: 3px;
+}
+
+.results-panel {
+  padding: 0 16px 14px;
+}
+
+.register-heading {
+  padding: 20px 8px 16px;
+  text-align: center;
+}
+
+.register-heading h2 {
+  margin: 0;
+  color: #f3f4f6;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.register-heading p {
+  margin: 7px 0 0;
+  color: #9699a2;
+  font-size: 0.9rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid #303239;
+  border-radius: 8px;
+}
+
+.allotment-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  background: #17181b;
+  color: #d5d7dc;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.allotment-table th,
+.allotment-table td {
+  border: 1px solid #2d2f35;
+  padding: 10px;
+}
+
+.allotment-table thead {
+  background: #202126;
+  color: #ececf0;
+}
+
+.allotment-table thead th {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.allotment-table tbody tr {
+  transition: background 120ms ease;
+}
+
+.allotment-table tbody tr:nth-child(even) {
+  background: #1b1c20;
+}
+
+.allotment-table tbody tr:hover {
+  background: #25262c;
+}
+
+.allotment-table .rc-number {
+  color: #c7c2ff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.quantity-pending {
+  display: inline-block;
+  min-width: 28px;
+  border: 1px solid rgb(231 180 83 / 25%);
+  border-radius: 5px;
+  padding: 2px 6px;
+  background: rgb(231 180 83 / 12%);
+  color: #f2c879;
+  font-weight: 700;
+}
+
+.status-cell {
+  min-width: 205px;
+}
+
+.port-status {
+  display: inline-block;
+  margin: 4px 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.port-status--found {
+  border-color: rgb(248 113 113 / 22%);
+  background: rgb(248 113 113 / 10%);
+  color: #fca5a5;
+}
+
+.port-status--pending {
+  border-color: rgb(74 222 128 / 22%);
+  background: rgb(74 222 128 / 9%);
+  color: #86efac;
+}
+
+.port-status--loading {
+  color: #a1a1aa;
+}
+
+.port-status--error {
+  color: #fca5a5;
+}
+
+.mobile-records {
+  display: none;
+}
+
+.message {
+  margin: 20px 0;
+  color: #b5b7bf;
+  text-align: center;
+}
+
+.error-message {
+  color: #fca5a5;
+}
+
+.app-footer {
+  padding-top: 14px;
+  color: #737680;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .app-shell {
+    width: calc(100% - 20px);
+    margin: 12px auto;
+  }
+
+  .search-panel {
+    padding: 18px 12px;
+  }
+
+  .shop-search {
+    flex-direction: column;
+  }
+
+  .shop-search input,
+  .shop-search button {
+    width: 100%;
+  }
+
+  .results-panel {
+    padding: 0 10px 10px;
+  }
+
+  .table-scroll {
+    display: none;
+  }
+
+  .mobile-records {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-record {
+    border: 1px solid #303239;
+    border-radius: 9px;
+    padding: 13px;
+    background: #1b1c20;
+    color: #d5d7dc;
+  }
+
+  .mobile-record h3 {
+    margin: 0 0 9px;
+    color: #f3f4f6;
+  }
+
+  .mobile-record h3 span {
+    color: #c7c2ff;
+  }
+
+  .mobile-record p {
+    margin: 6px 0;
+  }
+
+  .mobile-quantities {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 10px;
+    padding: 7px 0;
+  }
 }

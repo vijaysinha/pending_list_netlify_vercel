@@ -1,5 +1,15 @@
 # React + Vite
 
+## Netlify setup
+
+The port-data function requires `EPOS_CAPTCHA` and `EPOS_SALT` environment
+variables. Set both in the Netlify site environment-variable settings before
+deploying. For local Netlify development, set them in a local `.env` file and
+do not commit that file.
+
+The app currently has no authentication. Anyone who can access a public
+deployment may be able to query and view ration-card information.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

@@ -1,42 +1,125 @@
 import { useEffect, useState } from "react";
 
+const portDataCache = new Map();
+
+function getPortData(rc_id) {
+  const key = String(rc_id);
+  const cachedRequest = portDataCache.get(key);
+  if (cachedRequest) return cachedRequest;
+
+  const request = (async () => {
+    const res = await fetch("/.netlify/functions/getPortData", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ rc_id }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Function request failed: ${res.status} ${text}`);
+    }
+
+    const response = await res.json();
+    if (
+      response?.respcode != null &&
+      String(response.respcode) !== "200"
+    ) {
+      throw new Error(response.respmsg || "Port data request was unsuccessful");
+    }
+
+    const transactions =
+      response?.port_fpsid ?? response?.benficaryTransList;
+    if (!Array.isArray(transactions)) {
+      throw new Error("Port data response does not contain a transaction list");
+    }
+
+    const riceQuantities = { fRice: 0, cgRice: 0 };
+    for (const transaction of transactions) {
+      for (const commodity of transaction?.commoditylist || []) {
+        const normalizedName = String(commodity?.comm_short || "")
+          .toLowerCase()
+          .replace(/[^a-z]/g, "");
+        const key =
+          normalizedName === "frice" || normalizedName === "rice"
+            ? "fRice"
+            : normalizedName === "cgrice"
+              ? "cgRice"
+              : null;
+
+        if (key) {
+          const quantity = Number(commodity.allot_qty);
+          if (Number.isFinite(quantity)) riceQuantities[key] += quantity;
+        }
+      }
+    }
+
+    const portTransaction = transactions.find((transaction) =>
+      transaction?.port_fpsid,
+    );
+
+    return {
+      fps_id: portTransaction?.port_fpsid || null,
+      member_name_en: portTransaction?.availed_member_name || null,
+      riceQuantities,
+    };
+  })();
+
+  portDataCache.set(key, request);
+  request.catch(() => {
+    if (portDataCache.get(key) === request) {
+      portDataCache.delete(key);
+    }
+  });
+
+  return request;
+}
+
 export default function usePortData(rc_id) {
-  const [error, setError] = useState(false);
-  const [fps_id, setFPS_id] = useState({ fps_id: null, member_name_en: null })
+  const [result, setResult] = useState(null);
+  const [errorForRc, setErrorForRc] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!rc_id) return;
+
+    let isCurrentRequest = true;
+    const key = String(rc_id);
+
     const fetchData = async () => {
-      setError(false);
       setLoading(true);
       try {
-        const res = await fetch("/.netlify/functions/getPortData", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ rc_id }),
-        });
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Function request failed: ${res.status} ${text}`);
+        const result = await getPortData(rc_id);
+        if (isCurrentRequest) {
+          setResult({ rc_id: key, ...result });
+          setErrorForRc(null);
         }
-        const response = await res.json();
-        const filterd_data = await response?.port_fpsid[0]
-        console.log("Filtered data:", filterd_data);
-        setFPS_id({ fps_id: filterd_data?.port_fpsid || null, member_name_en: filterd_data?.availed_member_name || null });
-       
       } catch (err) {
-        setError(true);
-        console.error(`Error fetching data for RC ID ${rc_id}:`, err);
+        if (isCurrentRequest) {
+          setErrorForRc(key);
+          console.error(`Error fetching data for RC ID ${rc_id}:`, err);
+        }
       } finally {
-        setLoading(false);
+        if (isCurrentRequest) setLoading(false);
       }
     };
 
-    if (rc_id) {
-      fetchData();
-    }
+    fetchData();
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [rc_id]);
-  console.log(fps_id)
-  return { error, fps_id, loading };
+
+  const key = String(rc_id);
+  const hasResultForRc = result?.rc_id === key;
+  const error = errorForRc === key;
+  const isLoading = Boolean(rc_id) && (loading || (!hasResultForRc && !error));
+
+  return {
+    error,
+    fps_id: hasResultForRc
+      ? { fps_id: result.fps_id, member_name_en: result.member_name_en }
+      : { fps_id: null, member_name_en: null },
+    loading: isLoading,
+    riceQuantities: hasResultForRc ? result.riceQuantities : null,
+  };
 }
