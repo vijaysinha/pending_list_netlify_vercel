@@ -76,6 +76,13 @@ function Frame() {
     );
   }
 
+  const pendingRiceCardCount =
+    data?.filter(
+      (item) =>
+        getDisplayedQuantity(item, "fRice") > 0 ||
+        getDisplayedQuantity(item, "cgRice") > 0,
+    ).length ?? 0;
+
   function handleSubmit(event) {
     event.preventDefault();
     const trimmedShopId = shopId.trim();
@@ -121,6 +128,8 @@ function Frame() {
                 {searchRequest?.shopId
                   ? ` · दुकान क्रमांक ${searchRequest.shopId}`
                   : ""}
+                {" · "}
+                कुल कार्ड: {data.length} · उठाव शेष: {pendingRiceCardCount}
               </p>
             </div>
 
