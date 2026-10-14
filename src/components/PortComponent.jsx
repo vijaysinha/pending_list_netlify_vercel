@@ -1,12 +1,17 @@
 import { useEffect } from "react";
 import usePortData from "../usePortData";
 
-function PortComponent({ rc_id, onRiceQuantities }) {
+function PortComponent({ rc_id, onPortData }) {
   const { error, fps_id, loading, riceQuantities } = usePortData(rc_id);
 
   useEffect(() => {
-    if (riceQuantities) onRiceQuantities(rc_id, riceQuantities);
-  }, [onRiceQuantities, rc_id, riceQuantities]);
+    if (riceQuantities) {
+      onPortData(rc_id, {
+        riceQuantities,
+        member_name_en: fps_id.member_name_en,
+      });
+    }
+  }, [fps_id.member_name_en, onPortData, rc_id, riceQuantities]);
 
   if (loading) {
     return <p className="port-status port-status--loading">Loading...</p>;
@@ -25,7 +30,7 @@ function PortComponent({ rc_id, onRiceQuantities }) {
     >
       {hasPortData
         ? `चावल का ${fps_id.fps_id} से ${fps_id.member_name_en} द्वारा उठाव`
-        : "शायद उठाव शेष"}
+        : "उठाव शेष"}
     </p>
   );
 }

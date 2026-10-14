@@ -23,13 +23,13 @@ function Frame() {
   const [searchRequest, setSearchRequest] = useState(null);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
-  const [portRiceByRc, setPortRiceByRc] = useState({});
+  const [portDataByRc, setPortDataByRc] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const handleRiceQuantities = useCallback((rc_id, quantities) => {
-    setPortRiceByRc((current) => ({
+  const handlePortData = useCallback((rc_id, portData) => {
+    setPortDataByRc((current) => ({
       ...current,
-      [String(rc_id)]: quantities,
+      [String(rc_id)]: portData,
     }));
   }, []);
 
@@ -61,8 +61,19 @@ function Frame() {
     const quantity = Number(item[key]) || 0;
     if (key !== "fRice" && key !== "cgRice") return quantity;
 
-    const portQuantity = Number(portRiceByRc[String(item.rc_id)]?.[key]) || 0;
+    const portQuantity =
+      Number(portDataByRc[String(item.rc_id)]?.riceQuantities?.[key]) || 0;
     return quantity - portQuantity;
+  }
+
+  function getFamilyMemberName(item) {
+    if (Number(item.fRice) <= 0 && Number(item.cgRice) <= 0) return "—";
+
+    return (
+      portDataByRc[String(item.rc_id)]?.member_name_en ||
+      item.familyHead ||
+      "NA"
+    );
   }
 
   function handleSubmit(event) {
@@ -70,7 +81,7 @@ function Frame() {
     const trimmedShopId = shopId.trim();
     if (trimmedShopId) {
       setData(null);
-      setPortRiceByRc({});
+      setPortDataByRc({});
       setError(null);
       setLoading(true);
       setSearchRequest({ shopId: trimmedShopId });
@@ -122,7 +133,7 @@ function Frame() {
                     <tr>
                       <th rowSpan={2}>क्र.</th>
                       <th rowSpan={2}>RC Id</th>
-                      <th rowSpan={2}>Family Head</th>
+                      <th rowSpan={2}>Family Member</th>
                       <th rowSpan={2}>Scheme</th>
                       <th rowSpan={2}>Units</th>
                       <th colSpan={quantityColumns.length}>
@@ -141,7 +152,7 @@ function Frame() {
                       <tr key={item.rc_id}>
                         <td>{index + 1}</td>
                         <td className="rc-number">{item.rc_id}</td>
-                        <td>{item.familyHead || "NA"}</td>
+                        <td>{getFamilyMemberName(item)}</td>
                         <td>{item.scheme || "—"}</td>
                         <td>{item.units ?? 0}</td>
                         {quantityColumns.map(({ key }) => (
@@ -154,7 +165,7 @@ function Frame() {
                             Number(item.cgRice) > 0) && (
                             <PortComponent
                               rc_id={item.rc_id}
-                              onRiceQuantities={handleRiceQuantities}
+                              onPortData={handlePortData}
                             />
                           )}
                         </td>
@@ -171,7 +182,7 @@ function Frame() {
                   <h3>
                     {index + 1}. RC Id: <span>{item.rc_id}</span>
                   </h3>
-                  <p>Family Head: {item.familyHead || "NA"}</p>
+                  <p>Family Member: {getFamilyMemberName(item)}</p>
                   <p>Scheme: {item.scheme || "—"} · Units: {item.units ?? 0}</p>
                   <div className="mobile-quantities">
                     {quantityColumns.map(({ key, label }) => (
@@ -184,7 +195,7 @@ function Frame() {
                   {(Number(item.fRice) > 0 || Number(item.cgRice) > 0) && (
                     <PortComponent
                       rc_id={item.rc_id}
-                      onRiceQuantities={handleRiceQuantities}
+                      onPortData={handlePortData}
                     />
                   )}
                 </article>
