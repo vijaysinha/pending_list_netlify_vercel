@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/.netlify/functions/getAllotment",
+      "destination": "/api/getAllotment"
+    },
+    {
+      "source": "/.netlify/functions/getDistribution",
+      "destination": "/api/getDistribution"
+    },
+    {
+      "source": "/.netlify/functions/getPortData",
+      "destination": "/api/getPortData"
+    }
+  ]
+}

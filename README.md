@@ -1,11 +1,19 @@
 # React + Vite
 
-## Netlify setup
+## Deployment
 
-The port-data function requires `EPOS_CAPTCHA` and `EPOS_SALT` environment
-variables. Set both in the Netlify site environment-variable settings before
-deploying. For local Netlify development, set them in a local `.env` file and
-do not commit that file.
+This project supports both Netlify and Vercel. The Vercel API routes in `api/`
+adapt the existing handlers in `netlify/functions/`; the URL rewrites preserve
+the function URLs used by the frontend.
+
+For Vercel, import this project into the target Vercel repository and use the
+Vite defaults: build command `npm run build` and output directory `dist`. Set
+`EPOS_CAPTCHA` and `EPOS_SALT` in the Vercel project's environment variables
+for every environment that needs port-data lookups.
+
+For Netlify, retain the `netlify.toml` settings and set `EPOS_CAPTCHA` and
+`EPOS_SALT` in the site's environment variables. For local Netlify development,
+set them in an untracked `.env` file; do not commit credentials.
 
 The app currently has no authentication. Anyone who can access a public
 deployment may be able to query and view ration-card information.
