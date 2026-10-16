@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import getFinalData from "../getFinalData";
+import { createReportPdf } from "../createReportPdf";
 import PortComponent from "./PortComponent";
 
 const quantityColumns = [
@@ -26,6 +27,8 @@ function Frame() {
   const [portDataByRc, setPortDataByRc] = useState({});
   const [portErrorsByRc, setPortErrorsByRc] = useState({});
   const [loading, setLoading] = useState(false);
+  const [isSharingReport, setIsSharingReport] = useState(false);
+  const [reportShareMessage, setReportShareMessage] = useState(null);
 
   const handlePortData = useCallback((rc_id, portData) => {
     setPortDataByRc((current) => {
@@ -147,6 +150,93 @@ function Frame() {
     (item) => portErrorsByRc[String(item.rc_id)],
   );
 
+  async function handleShareReport() {
+    if (
+      isCheckingPortData ||
+      portCheckErrors.length > 0 ||
+      reportData.length === 0
+    ) {
+      return;
+    }
+
+    setIsSharingReport(true);
+    setReportShareMessage(null);
+    const filename = `pending-distribution-shop-${searchRequest.shopId}.pdf`;
+
+    try {
+      const rows = reportData.map((item, index) => [
+        String(index + 1),
+        String(item.rc_id),
+        String(getFamilyMemberName(item)),
+        String(item.scheme || "—"),
+        String(item.units ?? 0),
+        ...quantityColumns.map(({ key }) =>
+          String(getDisplayedQuantity(item, key) ?? "—"),
+        ),
+        getPickupStatus(item).label,
+      ]);
+      const pdfBlob = await createReportPdf({
+        shopId: searchRequest.shopId,
+        summary: {
+          pending: pendingRiceData.length,
+          pickedUp: pickedUpData.length,
+        },
+        rows,
+      });
+      const pdfFile = new File([pdfBlob], filename, {
+        type: "application/pdf",
+      });
+      const shareData = {
+        title: "उठाव शेष रिपोर्ट",
+        text: `दुकान क्रमांक ${searchRequest.shopId} की रिपोर्ट`,
+        files: [pdfFile],
+      };
+
+      if (
+        typeof navigator.share === "function" &&
+        (!navigator.canShare || navigator.canShare({ files: [pdfFile] }))
+      ) {
+        try {
+          await navigator.share(shareData);
+          setReportShareMessage(
+            "रिपोर्ट साझा करने के लिए WhatsApp चुनें।",
+          );
+        } catch (shareError) {
+          if (shareError.name === "AbortError") {
+            setReportShareMessage("रिपोर्ट साझा करना रद्द किया गया।");
+          } else {
+            console.error("Unable to open the report share sheet:", shareError);
+            downloadPdf(pdfBlob, filename);
+            setReportShareMessage(
+              "शेयर शीट नहीं खुली; PDF डाउनलोड कर दी गई है। इसे WhatsApp में संलग्न करें।",
+            );
+          }
+        }
+      } else {
+        downloadPdf(pdfBlob, filename);
+        setReportShareMessage(
+          "इस ब्राउज़र में PDF शेयर उपलब्ध नहीं है; PDF डाउनलोड कर दी गई है। इसे WhatsApp में संलग्न करें।",
+        );
+      }
+    } catch (shareError) {
+      console.error("Unable to create the report PDF:", shareError);
+      setReportShareMessage(
+        `PDF नहीं बन सकी: ${shareError.message || "अज्ञात त्रुटि"}`,
+      );
+    } finally {
+      setIsSharingReport(false);
+    }
+  }
+
+  function downloadPdf(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
     const trimmedShopId = shopId.trim();
@@ -155,6 +245,7 @@ function Frame() {
       setPortDataByRc({});
       setPortErrorsByRc({});
       setError(null);
+      setReportShareMessage(null);
       setLoading(true);
       setSearchRequest({ shopId: trimmedShopId });
     }
@@ -197,6 +288,26 @@ function Frame() {
                 उठाव शेष: {pendingRiceData.length} · राशन उठा चुके:{" "}
                 {pickedUpData.length}
               </p>
+              <button
+                className="report-share-button"
+                type="button"
+                onClick={handleShareReport}
+                disabled={
+                  isSharingReport ||
+                  isCheckingPortData ||
+                  portCheckErrors.length > 0 ||
+                  reportData.length === 0
+                }
+              >
+                {isSharingReport
+                  ? "PDF तैयार हो रही है..."
+                  : "PDF रिपोर्ट WhatsApp पर भेजें"}
+              </button>
+              {reportShareMessage && (
+                <p className="report-share-message" role="status">
+                  {reportShareMessage}
+                </p>
+              )}
             </div>
 
             {isCheckingPortData && (

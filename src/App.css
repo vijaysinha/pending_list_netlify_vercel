@@ -126,6 +126,36 @@ input {
   font-size: 0.9rem;
 }
 
+.report-share-button {
+  margin-top: 14px;
+  border: 1px solid #25a765;
+  border-radius: 7px;
+  padding: 10px 16px;
+  background: #16834b;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.report-share-button:hover:not(:disabled) {
+  background: #199455;
+}
+
+.report-share-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.report-share-button:focus-visible {
+  outline: 2px solid #86efac;
+  outline-offset: 3px;
+}
+
+.register-heading .report-share-message {
+  margin: 8px 0 0;
+  color: #bbf7d0;
+}
+
 .table-scroll {
   overflow-x: auto;
   border: 1px solid #303239;
