@@ -1,6 +1,30 @@
 import { env } from "node:process";
 import { getEposPeriod } from "../../shared/eposPeriod.js";
 
+const retryDelays = [300, 900];
+
+async function fetchPortPeriod(url, options, period) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fetch(url, options);
+    } catch (error) {
+      if (attempt === retryDelays.length) {
+        const causeCode = error.cause?.code ?? error.code;
+        const connectionError = new Error(
+          `EPOS connection failed for ${period}: ${error.message}${
+            causeCode ? ` (${causeCode})` : ""
+          }`,
+          { cause: error },
+        );
+        connectionError.code = causeCode;
+        throw connectionError;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]));
+    }
+  }
+}
+
 function getEntitlementKey(entitlement) {
   const commodity =
     entitlement?.comm_name_eng ??
@@ -58,20 +82,35 @@ export async function handler(event) {
     let members = [];
 
     for (const { month, year } of periods) {
-      const res = await fetch(
-        "https://epos.cg.gov.in/Epos_Spring/sdms/SRC_Trans_Int",
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
+      const period = `${month}/${year}`;
+      let res;
+      try {
+        res = await fetchPortPeriod(
+          "https://epos.cg.gov.in/Epos_Spring/sdms/SRC_Trans_Int",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              month: String(month),
+              year: String(year),
+              src_no: parseInt(rc_id),
+              captcha,
+              salt,
+            }),
+          },
+          period,
+        );
+      } catch (err) {
+        console.error(`PORT data request failed for ${period}:`, err);
+        return {
+          statusCode: 502,
+          headers: { "Access-Control-Allow-Origin": "*" },
           body: JSON.stringify({
-            month: String(month),
-            year: String(year),
-            src_no: parseInt(rc_id),
-            captcha,
-            salt,
+            error: err.message,
+            code: err.cause?.code ?? err.code ?? null,
           }),
-        },
-      );
+        };
+      }
 
       if (!res.ok) {
         const text = await res.text();
@@ -150,11 +189,14 @@ export async function handler(event) {
 
 
   } catch (err) {
-    console.error("Handler error:", err);
+    console.error("PORT data request failed:", err);
     return {
       statusCode: 500,
       headers: { "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({
+        error: err.message,
+        code: err.cause?.code ?? err.code ?? null,
+      }),
     };
   }
 }

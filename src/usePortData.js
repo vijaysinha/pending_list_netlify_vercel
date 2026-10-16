@@ -2,6 +2,35 @@ import { useEffect, useState } from "react";
 
 const portDataCache = new Map();
 const PORT_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_CONCURRENT_PORT_REQUESTS = 3;
+let activePortRequests = 0;
+const portRequestQueue = [];
+
+function runNextPortRequest() {
+  if (
+    activePortRequests >= MAX_CONCURRENT_PORT_REQUESTS ||
+    portRequestQueue.length === 0
+  ) {
+    return;
+  }
+
+  const { task, resolve, reject } = portRequestQueue.shift();
+  activePortRequests += 1;
+  Promise.resolve()
+    .then(task)
+    .then(resolve, reject)
+    .finally(() => {
+      activePortRequests -= 1;
+      runNextPortRequest();
+    });
+}
+
+function schedulePortRequest(task) {
+  return new Promise((resolve, reject) => {
+    portRequestQueue.push({ task, resolve, reject });
+    runNextPortRequest();
+  });
+}
 
 function getRiceKey(commodity) {
   const normalizedNames = [
@@ -60,7 +89,7 @@ function getPortData(rc_id) {
   }
   if (cachedEntry) portDataCache.delete(key);
 
-  const request = (async () => {
+  const request = schedulePortRequest(async () => {
     const res = await fetch("/.netlify/functions/getPortData", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -119,7 +148,7 @@ function getPortData(rc_id) {
       family_member_name: familyMember?.member_name_en || null,
       riceQuantities,
     };
-  })();
+  });
 
   const cacheEntry = { request, expiresAt: null };
   portDataCache.set(key, cacheEntry);
