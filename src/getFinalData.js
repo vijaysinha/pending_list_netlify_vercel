@@ -2,10 +2,15 @@ import { getAllotment } from "./getAllotment.js";
 import { getDistribution } from "./getDistribution.js";
 
 export default async function getFinalData(shop_id) {
-  const distributionData = await getDistribution(shop_id);
-  const allotmentData = await getAllotment(shop_id);
+  const [distributionData, allotmentData] = await Promise.all([
+    getDistribution(shop_id),
+    getAllotment(shop_id),
+  ]);
 
-  return findAllotment(distributionData, allotmentData);
+  const temporaryData = findAllotment(distributionData, allotmentData);
+  return temporaryData.filter(
+    (item) => Number(item.fRice) > 0 || Number(item.cgRice) > 0,
+  );
 }
 
 function findAllotment(distributionData, allotmentData) {
